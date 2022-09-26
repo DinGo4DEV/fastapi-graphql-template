@@ -28,3 +28,4 @@ python-multipart
 pytest-asyncio
 onetimepad
 dictdiffer
+aioarango
