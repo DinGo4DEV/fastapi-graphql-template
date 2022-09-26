@@ -1,0 +1,23 @@
+datasource:
+  ARANGO:
+    url: http://127.0.0.1:8529/
+    db: uat
+    username: root
+    password: ""
+    collections: 
+      test: test
+    views:
+      test-view: test-view
+
+
+logging:
+  path: logs/root.log
+
+
+max_browsing_history_size: 500
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  database: 0
+  cache_prefix_key: ''

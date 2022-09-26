@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $PROJECT_NAME
+  namespace: $PROJECT_NAMESPACE
+  labels:
+    app: $PROJECT_NAME
+    developer: DinGo4DEV
+  annotations:
+    git: $GIT_URL
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: $PROJECT_NAME
+  template:
+    creationTimestamp: null
+    metadata:
+      labels:
+        app: $PROJECT_NAME
+        developer: DinGo4DEV
+      annotations:
+        git: $GIT_URL
+    spec:
+      containers:
+      - name: $PROJECT_NAME
+        image: $IMAGE_REPO_HOST/$IMAGE_REPO/$PROJECT_NAME:$IMAGE_TAG
+        imagePullPolicy: "Always"
+        env:        
+        - name: CONFIG_DIRECTORY
+          value: /var/config
+        resources:
+          limits:
+            memory: "250Mi"
+            cpu: "300m"
+        ports:
+        - containerPort: 8080
+      - name: $PROJECT_NAME-worker
+        image: $IMAGE_REPO_HOST/$IMAGE_REPO/$PROJECT_NAME:$IMAGE_TAG  
+        imagePullPolicy: "Always"
+        env:        
+        - name: CONFIG_DIRECTORY
+          value: /var/config
+        ports:
+        - containerPort: 8003
+        command:
+          - celery
+        args:
+          - '--app'
+          - app.worker.celery
+          - worker
+          - '--concurrency'
+          - '5'
+          - '--loglevel'
+          - info
+      imagePullSecrets:
+        - name: regcred
+      dnsPolicy: ClusterFirst
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: $PROJECT_NAME
+  namespace: $PROJECT_NAMESPACE
+  labels:
+    app: $PROJECT_NAME
+    developer: DinGo4DEV
+  annotations:
+    git: $GIT_URL
+    prometheus.io/scrape: 'true'
+spec:
+  type: ClusterIP
+  selector:
+    app: $PROJECT_NAME
+  ports:
+    - name: web
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+  labels:
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/instance: "$PROJECT_NAME-metrics"
+    app.kubernetes.io/name: "$PROJECT_NAME-metrics"
+    release: prometheus
+  name: "$PROJECT_NAME-metrics"
+  namespace: $PROJECT_NAMESPACE
+spec:
+  endpoints:
+    - interval: 10s
+      path: /metrics
+      port: web
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - $PROJECT_NAMESPACE
+  selector:
+    matchLabels:
+      app: $PROJECT_NAME
